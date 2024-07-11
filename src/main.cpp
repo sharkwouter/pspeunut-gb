@@ -7,9 +7,9 @@
 
 #include <malloc.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <pspkernel.h>
-#include <stdio.h>
 PSP_MODULE_INFO("pspeanut-gb", 0, 1, 0);
 
 #include "../Peanut-GB/peanut_gb.h"
