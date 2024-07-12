@@ -348,21 +348,9 @@ int main(void)
         gb_texture.pW = 256;
         gb_texture.size = gb_texture.pH * gb_texture.pW * PIXEL_SIZE;
         gb_texture.data = getStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_8888);
-        VertV verts[6] = {
-            {0.0f, 0.0f, 0.0f},
-            {0.0f, 256.0f, 0.0f},
-            {256.0f, 256.0f, 0.0f},
-
-            {256.0f, 256.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f},
-            {256.0f, 0.0f, 0.0f},
-        };
-        unsigned short indices[6] = {
-            0, 1, 2, 2, 5, 0
-        };
         TextureVertex tverts[4] = {
             {0.0f, 0.0f, 0xFFFFFFFF, 0.0f, 0.0f, 0.0f},
-            {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, 0.0f},
+            {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, (float) gb_texture.width, (float) gb_texture.height, 0.0f},
         };
 
         memset(gb_texture.data, 0xFF00FF00, gb_texture.pW * gb_texture.pH);
@@ -395,9 +383,8 @@ int main(void)
             sceKernelDcacheWritebackRange(gb_texture.data, gb_texture.size);
 
             sceGuTexMode(GU_PSM_8888, 0, 0, GU_FALSE);
-            sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
+            sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
             sceGuTexImage(0, gb_texture.pW, gb_texture.pH, gb_texture.pW, gb_texture.data);
-            sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 
             sceGuEnable(GU_TEXTURE_2D);            
             sceGuDrawArray(GU_SPRITES, GU_COLOR_8888 | GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, 2, 0, tverts);
