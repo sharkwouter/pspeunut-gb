@@ -351,8 +351,67 @@ int main(void)
             sceGuStart(GU_DIRECT, list);
 
             sceCtrlReadLatch(&pad);
-            if (pad.uiMake & PSP_CTRL_START) {
+            // Exit button is triangle
+            if (pad.uiMake & PSP_CTRL_TRIANGLE) {
                 exit = 1;
+            }
+
+            // Button releases
+            if (pad.uiBreak & PSP_CTRL_CROSS) {
+                gb.direct.joypad |= JOYPAD_A;
+            }
+            if (pad.uiBreak & PSP_CTRL_CIRCLE) {
+                gb.direct.joypad |= JOYPAD_B;
+            }
+            if (pad.uiBreak & PSP_CTRL_SQUARE) {
+                gb.direct.joypad |= JOYPAD_B;
+            }
+            if (pad.uiBreak & PSP_CTRL_START) {
+                gb.direct.joypad |= JOYPAD_START;
+            }
+            if (pad.uiBreak & PSP_CTRL_SELECT) {
+                gb.direct.joypad |= JOYPAD_SELECT;
+            }
+            if (pad.uiBreak & PSP_CTRL_UP) {
+                gb.direct.joypad |= JOYPAD_UP;
+            }
+            if (pad.uiBreak & PSP_CTRL_DOWN) {
+                gb.direct.joypad |= JOYPAD_DOWN;
+            }
+            if (pad.uiBreak & PSP_CTRL_LEFT) {
+                gb.direct.joypad |= JOYPAD_LEFT;
+            }
+            if (pad.uiBreak & PSP_CTRL_RIGHT) {
+                gb.direct.joypad |= JOYPAD_RIGHT;
+            }
+
+            // Button pressed
+            if (pad.uiMake & PSP_CTRL_CROSS) {
+                gb.direct.joypad &= ~JOYPAD_A;
+            }
+            if (pad.uiMake & PSP_CTRL_CIRCLE) {
+                gb.direct.joypad &= ~JOYPAD_B;
+            }
+            if (pad.uiMake & PSP_CTRL_SQUARE) {
+                gb.direct.joypad &= ~JOYPAD_B;
+            }
+            if (pad.uiMake & PSP_CTRL_START) {
+                gb.direct.joypad &= ~JOYPAD_START;
+            }
+            if (pad.uiMake & PSP_CTRL_SELECT) {
+                gb.direct.joypad &= ~JOYPAD_SELECT;
+            }
+            if (pad.uiMake & PSP_CTRL_UP) {
+                gb.direct.joypad &= ~JOYPAD_UP;
+            }
+            if (pad.uiMake & PSP_CTRL_DOWN) {
+                gb.direct.joypad &= ~JOYPAD_DOWN;
+            }
+            if (pad.uiMake & PSP_CTRL_LEFT) {
+                gb.direct.joypad &= ~JOYPAD_LEFT;
+            }
+            if (pad.uiMake & PSP_CTRL_RIGHT) {
+                gb.direct.joypad &= ~JOYPAD_RIGHT;
             }
         }
     }
