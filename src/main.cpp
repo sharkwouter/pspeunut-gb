@@ -3,6 +3,7 @@
 #include <pspiofilemgr.h>
 #include <pspdisplay.h>
 #include <pspgu.h>
+#include <pspgum.h>
 #include <vram.h>
 
 #include <malloc.h>
@@ -29,11 +30,38 @@ PSP_MODULE_INFO("pspeanut-gb", 0, 1, 0);
 #define RENDER_OFFSET_X 160
 #define RENDER_OFFSET_Y (PSP_FRAME_BUFFER_WIDTH * 64)
 
-// Some global variables
-uint32_t *doublebuffer = NULL;
-uint32_t *backbuffer = NULL;
-uint32_t *frontbuffer = NULL;
+typedef struct {
+    unsigned int width, height;
+    unsigned int pW, pH;
+    unsigned int size;
 
+    void* data;
+} texture;
+
+typedef struct
+{
+    float x, y, z;
+} VertV;
+
+typedef struct
+{
+    float   u, v;
+    float   x, y, z;
+} VertTV;
+
+typedef struct
+{
+    float u, v;
+    unsigned int colour;
+    float x, y, z;
+} TextureVertex;
+
+
+// Some global variables
+void* fbp0 = NULL;
+void* fbp1 = NULL;
+
+texture gb_texture;
 
 static unsigned int __attribute__((aligned(16))) list[262144];
 
@@ -132,15 +160,14 @@ void lcd_draw_line(struct gb_s *gb, const uint8_t pixels[LCD_WIDTH],
 {
 	const uint32_t palette[] = { 0xFFFFFFFF, 0xFFA5A5A5, 0xFF525252, 0xFF000000 };
     uint32_t result[LCD_WIDTH];
-    unsigned int line_size = PIXEL_SIZE * LCD_WIDTH;
+    unsigned int line_size = LCD_WIDTH * PIXEL_SIZE;
 
 	for(unsigned int x = 0; x < LCD_WIDTH; x++) {
 		result[x] = palette[pixels[x] & 3];
     }
 
-    uint32_t* memory_address = frontbuffer + (PSP_FRAME_BUFFER_WIDTH * line) + RENDER_OFFSET_Y + RENDER_OFFSET_X;
+    uint32_t* memory_address = (uint32_t*)(gb_texture.data) + (gb_texture.pW * line);
     memcpy(memory_address, result, line_size);
-    sceKernelDcacheWritebackRange(memory_address, line_size);
 }
 
 int string_ends_with(char * string, const char * end) {
@@ -311,18 +338,42 @@ int main(void)
         priv.cart_ram = (uint8_t *) malloc(gb_get_save_size(&gb));
 
         gb_init_lcd(&gb, &lcd_draw_line);
-        
-        doublebuffer = (uint32_t *) vramalloc(PSP_FRAME_BUFFER_SIZE * PIXEL_SIZE * 2);
-        backbuffer = doublebuffer;
-        frontbuffer = doublebuffer + (PSP_FRAME_BUFFER_SIZE * PIXEL_SIZE);
+
+        fbp0 = getStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
+        fbp1 = getStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
+
+        gb_texture.width = LCD_WIDTH;
+        gb_texture.height = LCD_HEIGHT;
+        gb_texture.pH = 256;
+        gb_texture.pW = 256;
+        gb_texture.size = gb_texture.pH * gb_texture.pW * PIXEL_SIZE;
+        gb_texture.data = getStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_8888);
+        VertV verts[6] = {
+            {0.0f, 0.0f, 0.0f},
+            {0.0f, 256.0f, 0.0f},
+            {256.0f, 256.0f, 0.0f},
+
+            {256.0f, 256.0f, 0.0f},
+            {0.0f, 0.0f, 0.0f},
+            {256.0f, 0.0f, 0.0f},
+        };
+        unsigned short indices[6] = {
+            0, 1, 2, 2, 5, 0
+        };
+        TextureVertex tverts[4] = {
+            {0.0f, 0.0f, 0xFFFFFFFF, 0.0f, 0.0f, 0.0f},
+            {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, 0.0f},
+        };
+
+        memset(gb_texture.data, 0xFF00FF00, gb_texture.pW * gb_texture.pH);
 
         sceGuInit();
 
         /* setup GU */
         sceGuStart(GU_DIRECT, list);
-        sceGuDrawBuffer(PIXEL_FORMAT, vrelptr(frontbuffer), PSP_FRAME_BUFFER_WIDTH);
-        sceGuDispBuffer(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, vrelptr(backbuffer), PSP_FRAME_BUFFER_WIDTH);
-        sceGuDepthBuffer(vrelptr(backbuffer), 0); // Set the depth buffer to the same space as the framebuffer
+        sceGuDrawBuffer(PIXEL_FORMAT, fbp0, PSP_FRAME_BUFFER_WIDTH);
+        sceGuDispBuffer(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, fbp1, PSP_FRAME_BUFFER_WIDTH);
+        sceGuDepthBuffer(fbp0, 0); // Set the depth buffer to the same space as the framebuffer
 
         sceGuOffset(2048 - (PSP_SCREEN_WIDTH >> 1), 2048 - (PSP_SCREEN_HEIGHT >> 1));
         sceGuViewport(2048, 2048, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
@@ -333,22 +384,29 @@ int main(void)
         sceGuScissor(0, 0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
         sceGuEnable(GU_SCISSOR_TEST);
 
-        // Clear the screen
-        sceGuClearColor(0);
         sceGuClear(GU_COLOR_BUFFER_BIT);
-
-        sceKernelDcacheWritebackAll();
+        sceGuFinish();
+        sceGuDisplay(GU_TRUE);
 
         while(!exit) {
+            sceGuStart(GU_DIRECT, list);
+
             gb_run_frame(&gb);
-            // sceGuDrawBufferList(PIXEL_FORMAT, vrelptr(frontbuffer), PSP_FRAME_BUFFER_WIDTH);
+            sceKernelDcacheWritebackRange(gb_texture.data, gb_texture.size);
+
+            sceGuTexMode(GU_PSM_8888, 0, 0, GU_FALSE);
+            sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
+            sceGuTexImage(0, gb_texture.pW, gb_texture.pH, gb_texture.pW, gb_texture.data);
+            sceGuTexFilter(GU_NEAREST, GU_NEAREST);
+
+            sceGuEnable(GU_TEXTURE_2D);            
+            sceGuDrawArray(GU_SPRITES, GU_COLOR_8888 | GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, 2, 0, tverts);
+            sceGuDisable(GU_TEXTURE_2D);
 
             sceGuFinish();
             sceGuSync(0, 0);
             // sceDisplayWaitVblankStart();
-            backbuffer = frontbuffer;
-            frontbuffer = (uint32_t *) vabsptr(sceGuSwapBuffers());
-            sceGuStart(GU_DIRECT, list);
+            sceGuSwapBuffers();
 
             sceCtrlReadLatch(&pad);
             // Exit button is triangle
@@ -418,8 +476,9 @@ int main(void)
 
     sceGuDisplay(GU_FALSE);
     sceGuTerm();
-    vfree(backbuffer);
-    vfree(frontbuffer);
+    vfree(fbp0);
+    vfree(fbp1);
+    vfree(gb_texture.data);
 
 	free(priv.cart_ram);
 	free(priv.rom);

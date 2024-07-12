@@ -13,6 +13,7 @@ if(PLATFORM_PSP)
         pspctrl
         pspge
         pspgu
+        pspgum
         pspvram
     )
     create_pbp_file(
