@@ -13,7 +13,7 @@
 #include <pspkernel.h>
 PSP_MODULE_INFO("pspeanut-gb", 0, 1, 0);
 
-#include "../Peanut-GB/peanut_gb.h"
+#include "peanut_gb.h"
 
 #define MAX_FILE_NAME_LENGTH 256
 #define ROMS_DIRECTORY "./"

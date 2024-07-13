@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(pspeanut-gb)
 
-file(GLOB_RECURSE SRC src/*.cpp)
+file(GLOB_RECURSE SRC src/*.cpp src/*.h)
 
 add_executable(${PROJECT_NAME} ${SRC} Peanut-GB/peanut_gb.h)
 
