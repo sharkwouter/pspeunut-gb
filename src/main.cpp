@@ -158,16 +158,7 @@ void gb_error(struct gb_s *gb, const enum gb_error_e gb_err, const uint16_t val)
 void lcd_draw_line(struct gb_s *gb, const uint8_t pixels[LCD_WIDTH],
 		   const uint_fast8_t line)
 {
-	const uint32_t palette[] = { 0xFFFFFFFF, 0xFFA5A5A5, 0xFF525252, 0xFF000000 };
-    uint32_t result[LCD_WIDTH];
-    unsigned int line_size = LCD_WIDTH * PIXEL_SIZE;
-
-	for(unsigned int x = 0; x < LCD_WIDTH; x++) {
-		result[x] = palette[pixels[x] & 3];
-    }
-
-    uint32_t* memory_address = (uint32_t*)(gb_texture.data) + (gb_texture.pW * line);
-    memcpy(memory_address, result, line_size);
+    memcpy((uint8_t*)(gb_texture.data) + (gb_texture.pW * line), pixels, LCD_WIDTH);
 }
 
 int string_ends_with(char * string, const char * end) {
@@ -347,13 +338,20 @@ int main(void)
         gb_texture.pH = 256;
         gb_texture.pW = 256;
         gb_texture.size = gb_texture.pH * gb_texture.pW * PIXEL_SIZE;
-        gb_texture.data = getStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_8888);
+        gb_texture.data = getStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_T8);
         TextureVertex tverts[4] = {
-            {0.0f, 0.0f, 0xFFFFFFFF, 0.0f, 0.0f, 0.0f},
-            {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, (float) gb_texture.width, (float) gb_texture.height, 0.0f},
+            {0.0f, 0.0f, 0xFFFFFFFF, (PSP_SCREEN_WIDTH - LCD_WIDTH) / 2.0f, (PSP_SCREEN_HEIGHT - LCD_HEIGHT) / 2.0f, 0.0f},
+            {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, (float) gb_texture.width + ((PSP_SCREEN_WIDTH - LCD_WIDTH) / 2.0f), (float) gb_texture.height + ((PSP_SCREEN_HEIGHT - LCD_HEIGHT) / 2.0f), 0.0f},
         };
 
         memset(gb_texture.data, 0xFF00FF00, gb_texture.pW * gb_texture.pH);
+
+        // This needs to be 32 entries, but we only need 4
+        uint32_t __attribute__((aligned(16))) palette[32];
+        palette[0] = 0xFFFFFFFF;
+        palette[1] = 0xFFA5A5A5;
+        palette[2] = 0xFF525252;
+        palette[3] = 0xFF000000;
 
         sceGuInit();
 
@@ -377,25 +375,26 @@ int main(void)
         sceGuDisplay(GU_TRUE);
 
         while(!exit) {
+            sceCtrlReadLatch(&pad);
             sceGuStart(GU_DIRECT, list);
 
             gb_run_frame(&gb);
             sceKernelDcacheWritebackRange(gb_texture.data, gb_texture.size);
 
-            sceGuTexMode(GU_PSM_8888, 0, 0, GU_FALSE);
+            sceGuClutMode(GU_PSM_8888, 0, 3, 0);
+	        sceGuClutLoad(1, palette);
+            sceGuTexMode(GU_PSM_T8, 0, 0, GU_FALSE);
             sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
             sceGuTexImage(0, gb_texture.pW, gb_texture.pH, gb_texture.pW, gb_texture.data);
 
             sceGuEnable(GU_TEXTURE_2D);            
-            sceGuDrawArray(GU_SPRITES, GU_COLOR_8888 | GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, 2, 0, tverts);
+            sceGuDrawArray(GU_SPRITES, GU_COLOR_8888 | GU_TEXTURE_32BITF| GU_VERTEX_32BITF | GU_TRANSFORM_2D, 2, 0, tverts);
             sceGuDisable(GU_TEXTURE_2D);
 
             sceGuFinish();
             sceGuSync(0, 0);
-            // sceDisplayWaitVblankStart();
             sceGuSwapBuffers();
 
-            sceCtrlReadLatch(&pad);
             // Exit button is triangle
             if (pad.uiMake & PSP_CTRL_TRIANGLE) {
                 exit = 1;
