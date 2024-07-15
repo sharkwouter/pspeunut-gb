@@ -330,15 +330,15 @@ int main(void)
 
         gb_init_lcd(&gb, &lcd_draw_line);
 
-        fbp0 = getStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
-        fbp1 = getStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
+        fbp0 = guGetStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
+        fbp1 = guGetStaticVramBuffer(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, GU_PSM_8888);
 
         gb_texture.width = LCD_WIDTH;
         gb_texture.height = LCD_HEIGHT;
         gb_texture.pH = 256;
         gb_texture.pW = 256;
         gb_texture.size = gb_texture.pH * gb_texture.pW * PIXEL_SIZE;
-        gb_texture.data = getStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_T8);
+        gb_texture.data = guGetStaticVramTexture(gb_texture.pW, gb_texture.pH, GU_PSM_T8);
         TextureVertex tverts[4] = {
             {0.0f, 0.0f, 0xFFFFFFFF, (PSP_SCREEN_WIDTH - LCD_WIDTH) / 2.0f, (PSP_SCREEN_HEIGHT - LCD_HEIGHT) / 2.0f, 0.0f},
             {(float) gb_texture.width, (float) gb_texture.height, 0xFFFFFFFF, (float) gb_texture.width + ((PSP_SCREEN_WIDTH - LCD_WIDTH) / 2.0f), (float) gb_texture.height + ((PSP_SCREEN_HEIGHT - LCD_HEIGHT) / 2.0f), 0.0f},

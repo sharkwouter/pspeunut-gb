@@ -4,7 +4,7 @@ project(pspeanut-gb)
 
 file(GLOB_RECURSE SRC src/*.cpp src/*.h)
 
-add_executable(${PROJECT_NAME} ${SRC} Peanut-GB/peanut_gb.h)
+add_executable(${PROJECT_NAME} ${SRC})
 
 if(PLATFORM_PSP)
     target_link_libraries(${PROJECT_NAME} PRIVATE
